@@ -4,6 +4,7 @@ import { SesReceivingStack } from '../lib/ses-receiving-stack.js';
 import { SesConfig } from '../config/parameters.js';
 
 const testConfig: SesConfig = {
+  region: 'us-east-1',
   domainPattern: 'forwarding',
   receiveDomain: 'example.com',
   receiveAddresses: ['test@example.com'],

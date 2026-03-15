@@ -22,8 +22,9 @@ export class DomainIdentityStack extends cdk.Stack {
         zoneName: domainConfig.domainName,
       });
 
+      const nameServers = (hostedZone as route53.PublicHostedZone).hostedZoneNameServers!;
       new cdk.CfnOutput(this, 'NameServers', {
-        value: (hostedZone as route53.PublicHostedZone).hostedZoneNameServers?.join(', ') ?? '',
+        value: cdk.Fn.join(', ', nameServers),
         description:
           'ドメインレジストラに設定するネームサーバー',
       });

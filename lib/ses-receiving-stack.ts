@@ -6,7 +6,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaNodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as ses from 'aws-cdk-lib/aws-ses';
 import * as sesActions from 'aws-cdk-lib/aws-ses-actions';
-import * as iam from 'aws-cdk-lib/aws-iam';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 import * as path from 'path';
 import { SesConfig } from '../config/parameters.js';
@@ -28,7 +28,8 @@ export class SesReceivingStack extends cdk.Stack {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       enforceSSL: true,
       versioned: true,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
       lifecycleRules: [
         {
           expiration: cdk.Duration.days(config.s3.lifecycleDays),
@@ -48,6 +49,13 @@ export class SesReceivingStack extends cdk.Stack {
       );
     }
 
+    // Lambda LogGroup（cdk destroyで削除されるように明示作成）
+    const logGroup = new logs.LogGroup(this, 'EmailNotificationLogGroup', {
+      logGroupName: '/aws/lambda/ses-email-notification',
+      retention: logs.RetentionDays.ONE_YEAR,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
     // Lambda Function
     const notificationFn = new lambdaNodejs.NodejsFunction(
       this,
@@ -57,6 +65,7 @@ export class SesReceivingStack extends cdk.Stack {
         handler: 'handler',
         runtime: lambda.Runtime.NODEJS_22_X,
         timeout: cdk.Duration.seconds(30),
+        logGroup,
         environment: {
           BUCKET_NAME: emailBucket.bucketName,
           SNS_TOPIC_ARN: notificationTopic.topicArn,

@@ -15,6 +15,8 @@ export interface NewDomainConfig {
 }
 
 export interface SesConfig {
+  /** デプロイ先リージョン（SES受信対応: us-east-1, us-west-2, eu-west-1） */
+  readonly region: string;
   /** デプロイパターン: "forwarding"（転送）or "newDomain"（新規ドメイン） */
   readonly domainPattern: 'forwarding' | 'newDomain';
   /** SESで受信するドメイン */
@@ -40,6 +42,14 @@ export function loadConfig(context: Record<string, unknown>): SesConfig {
   }
 
   const config = raw as Record<string, unknown>;
+
+  // region
+  const region = config['region'];
+  if (!region || typeof region !== 'string') {
+    throw new Error(
+      'sesConfig.region を指定してください（例: "us-east-1"）。SES受信対応リージョン: us-east-1, us-west-2, eu-west-1'
+    );
+  }
 
   // domainPattern
   const domainPattern = config['domainPattern'];
@@ -138,6 +148,7 @@ export function loadConfig(context: Record<string, unknown>): SesConfig {
   }
 
   return {
+    region: region as string,
     domainPattern,
     receiveDomain,
     receiveAddresses,

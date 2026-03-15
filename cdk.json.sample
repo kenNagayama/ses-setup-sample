@@ -18,6 +18,7 @@
   },
   "context": {
     "sesConfig": {
+      "region": "us-east-1",
       "domainPattern": "forwarding",
       "receiveDomain": "example.com",
       "receiveAddresses": ["notification@example.com"],
