@@ -18,21 +18,10 @@
   },
   "context": {
     "sesConfig": {
-      "region": "us-east-1",
-      "domainPattern": "forwarding",
-      "receiveDomain": "example.com",
-      "receiveAddresses": ["notification@example.com"],
-      "notificationEmails": ["admin@company.co.jp"],
-      "presignedUrlExpiryDays": 7,
-      "s3": {
-        "bucketNameSuffix": "received-emails",
-        "objectKeyPrefix": "incoming/",
-        "lifecycleDays": 365
-      },
-      "newDomain": {
-        "domainName": "example.com",
-        "createHostedZone": true
-      }
+      "region": "ap-northeast-1",
+      "senderEmail": "sender@example.com",
+      "apiKeyName": "ses-sending-api-key",
+      "stageName": "v1"
     },
     "@aws-cdk/aws-signer:signingProfileNamePassedToCfn": true,
     "@aws-cdk/aws-ecs-patterns:secGroupsDisablesImplicitOpenListener": true,
