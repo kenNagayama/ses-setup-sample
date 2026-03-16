@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SES メール送信テスト</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f5f7fa; color: #333; line-height: 1.6; padding: 20px; }
+.container { max-width: 720px; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin-bottom: 20px; color: #1a202c; }
+.card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px; }
+.card h2 { font-size: 1rem; margin-bottom: 16px; color: #4a5568; }
+label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; color: #4a5568; }
+input[type="text"], input[type="password"], textarea {
+  width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;
+  font-size: 0.9rem; margin-bottom: 12px; font-family: inherit;
+}
+input:focus, textarea:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
+textarea { resize: vertical; min-height: 80px; }
+.password-wrapper { position: relative; }
+.password-wrapper input { padding-right: 48px; }
+.toggle-password {
+  position: absolute; right: 8px; top: 6px; background: none; border: none;
+  cursor: pointer; font-size: 0.8rem; color: #6b7280; padding: 2px 6px;
+}
+.hint { font-size: 0.75rem; color: #9ca3af; margin-top: -8px; margin-bottom: 12px; }
+.tabs { display: flex; gap: 0; margin-bottom: 0; }
+.tab {
+  padding: 10px 20px; cursor: pointer; border: 1px solid #d1d5db;
+  background: #f9fafb; font-size: 0.9rem; font-weight: 500; color: #6b7280;
+  border-bottom: none; border-radius: 8px 8px 0 0; transition: background 0.15s;
+}
+.tab:hover { background: #f3f4f6; }
+.tab.active { background: #fff; color: #1a202c; border-bottom: 1px solid #fff; margin-bottom: -1px; z-index: 1; }
+.tab-content { display: none; background: #fff; border: 1px solid #d1d5db; border-radius: 0 8px 8px 8px; padding: 20px; }
+.tab-content.active { display: block; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 10px 24px;
+  background: #3b82f6; color: #fff; border: none; border-radius: 6px;
+  font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: background 0.15s;
+}
+.btn:hover { background: #2563eb; }
+.btn:disabled { background: #93c5fd; cursor: not-allowed; }
+.spinner { display: none; width: 16px; height: 16px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.result { margin-top: 16px; padding: 12px 16px; border-radius: 6px; font-size: 0.85rem; display: none; word-break: break-all; }
+.result.success { background: #ecfdf5; border: 1px solid #6ee7b7; color: #065f46; }
+.result.error { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
+.required::after { content: " *"; color: #ef4444; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>SES メール送信テスト</h1>
+
+  <div class="card">
+    <h2>接続設定</h2>
+    <label for="endpoint">API Endpoint URL</label>
+    <input type="text" id="endpoint" placeholder="https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/v1">
+    <label for="apikey">API Key</label>
+    <div class="password-wrapper">
+      <input type="password" id="apikey" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+      <button type="button" class="toggle-password" onclick="toggleApiKey()">表示</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('send')">自由形式メール</div>
+    <div class="tab" onclick="switchTab('template')">テンプレートメール</div>
+  </div>
+
+  <div id="tab-send" class="tab-content active">
+    <label class="required" for="send-to">To</label>
+    <input type="text" id="send-to" placeholder="user@example.com, user2@example.com">
+    <div class="hint">カンマ区切りで複数指定可</div>
+    <label for="send-cc">CC</label>
+    <input type="text" id="send-cc" placeholder="cc@example.com">
+    <label for="send-bcc">BCC</label>
+    <input type="text" id="send-bcc" placeholder="bcc@example.com">
+    <label for="send-replyto">Reply-To</label>
+    <input type="text" id="send-replyto" placeholder="reply@example.com">
+    <label class="required" for="send-subject">Subject</label>
+    <input type="text" id="send-subject" value="テスト通知">
+    <label class="required" for="send-body">Body（テキスト）</label>
+    <textarea id="send-body">API Gateway経由でのメール送信テストです。</textarea>
+    <label for="send-bodyhtml">Body HTML</label>
+    <textarea id="send-bodyhtml"><h1>テスト通知</h1><p>API Gateway経由でのメール送信テストです。</p></textarea>
+    <button class="btn" id="btn-send" onclick="sendFreeform()">
+      <span class="spinner" id="spinner-send"></span>送信
+    </button>
+    <div class="result" id="result-send"></div>
+  </div>
+
+  <div id="tab-template" class="tab-content">
+    <label class="required" for="tpl-to">To</label>
+    <input type="text" id="tpl-to" placeholder="user@example.com, user2@example.com">
+    <div class="hint">カンマ区切りで複数指定可</div>
+    <label for="tpl-cc">CC</label>
+    <input type="text" id="tpl-cc" placeholder="cc@example.com">
+    <label for="tpl-bcc">BCC</label>
+    <input type="text" id="tpl-bcc" placeholder="bcc@example.com">
+    <label for="tpl-replyto">Reply-To</label>
+    <input type="text" id="tpl-replyto" placeholder="reply@example.com">
+    <label class="required" for="tpl-name">Template Name</label>
+    <input type="text" id="tpl-name" value="NotificationTemplate">
+    <label class="required" for="tpl-data">Template Data（JSON）</label>
+    <textarea id="tpl-data" rows="6">{
+  "title": "システムアラート",
+  "name": "田中太郎",
+  "message": "サーバーのCPU使用率が90%を超えました。"
+}</textarea>
+    <button class="btn" id="btn-template" onclick="sendTemplate()">
+      <span class="spinner" id="spinner-template"></span>送信
+    </button>
+    <div class="result" id="result-template"></div>
+  </div>
+</div>
+
+<script>
+// localStorage 保存・復元
+const endpointEl = document.getElementById('endpoint');
+const apikeyEl = document.getElementById('apikey');
+
+endpointEl.value = localStorage.getItem('ses-test-endpoint') || '';
+apikeyEl.value = localStorage.getItem('ses-test-apikey') || '';
+
+endpointEl.addEventListener('input', () => localStorage.setItem('ses-test-endpoint', endpointEl.value));
+apikeyEl.addEventListener('input', () => localStorage.setItem('ses-test-apikey', apikeyEl.value));
+
+function toggleApiKey() {
+  const btn = document.querySelector('.toggle-password');
+  if (apikeyEl.type === 'password') {
+    apikeyEl.type = 'text';
+    btn.textContent = '隠す';
+  } else {
+    apikeyEl.type = 'password';
+    btn.textContent = '表示';
+  }
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', (name === 'send' ? i === 0 : i === 1));
+  });
+  document.getElementById('tab-send').classList.toggle('active', name === 'send');
+  document.getElementById('tab-template').classList.toggle('active', name === 'template');
+}
+
+function parseAddresses(val) {
+  if (!val.trim()) return [];
+  return val.split(',').map(s => s.trim()).filter(Boolean);
+}
+
+function showResult(id, success, message) {
+  const el = document.getElementById(id);
+  el.style.display = 'block';
+  el.className = 'result ' + (success ? 'success' : 'error');
+  el.textContent = message;
+}
+
+function setLoading(tab, loading) {
+  const btn = document.getElementById('btn-' + tab);
+  const spinner = document.getElementById('spinner-' + tab);
+  btn.disabled = loading;
+  spinner.style.display = loading ? 'inline-block' : 'none';
+}
+
+async function postApi(path, body, tab) {
+  const endpoint = endpointEl.value.trim().replace(/\/+$/, '');
+  const apikey = apikeyEl.value.trim();
+  if (!endpoint || !apikey) {
+    showResult('result-' + tab, false, '接続設定の API Endpoint URL と API Key を入力してください。');
+    return;
+  }
+  setLoading(tab, true);
+  try {
+    const res = await fetch(endpoint + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apikey },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showResult('result-' + tab, true, 'messageId: ' + data.messageId);
+    } else {
+      showResult('result-' + tab, false, 'HTTP ' + res.status + ': ' + (data.error || JSON.stringify(data)));
+    }
+  } catch (e) {
+    showResult('result-' + tab, false, 'リクエスト失敗: ' + e.message);
+  } finally {
+    setLoading(tab, false);
+  }
+}
+
+function sendFreeform() {
+  const to = parseAddresses(document.getElementById('send-to').value);
+  const subject = document.getElementById('send-subject').value.trim();
+  const body = document.getElementById('send-body').value.trim();
+  if (!to.length || !subject || !body) {
+    showResult('result-send', false, 'To、Subject、Body は必須です。');
+    return;
+  }
+  const payload = { to, subject, body };
+  const cc = parseAddresses(document.getElementById('send-cc').value);
+  const bcc = parseAddresses(document.getElementById('send-bcc').value);
+  const replyTo = parseAddresses(document.getElementById('send-replyto').value);
+  const bodyHtml = document.getElementById('send-bodyhtml').value.trim();
+  if (cc.length) payload.cc = cc;
+  if (bcc.length) payload.bcc = bcc;
+  if (replyTo.length) payload.replyTo = replyTo;
+  if (bodyHtml) payload.bodyHtml = bodyHtml;
+  postApi('/send', payload, 'send');
+}
+
+function sendTemplate() {
+  const to = parseAddresses(document.getElementById('tpl-to').value);
+  const templateName = document.getElementById('tpl-name').value.trim();
+  const templateDataRaw = document.getElementById('tpl-data').value.trim();
+  if (!to.length || !templateName) {
+    showResult('result-template', false, 'To と Template Name は必須です。');
+    return;
+  }
+  let templateData;
+  try {
+    templateData = templateDataRaw ? JSON.parse(templateDataRaw) : {};
+  } catch (e) {
+    showResult('result-template', false, 'Template Data の JSON が不正です: ' + e.message);
+    return;
+  }
+  const payload = { to, templateName, templateData };
+  const cc = parseAddresses(document.getElementById('tpl-cc').value);
+  const bcc = parseAddresses(document.getElementById('tpl-bcc').value);
+  const replyTo = parseAddresses(document.getElementById('tpl-replyto').value);
+  if (cc.length) payload.cc = cc;
+  if (bcc.length) payload.bcc = bcc;
+  if (replyTo.length) payload.replyTo = replyTo;
+  postApi('/send-template', payload, 'template');
+}
+</script>
+</body>
+</html>

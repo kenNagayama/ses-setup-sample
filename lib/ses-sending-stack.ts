@@ -50,6 +50,11 @@ export class SesSendingStack extends cdk.Stack {
       deployOptions: {
         stageName: config.stageName,
       },
+      defaultCorsPreflightOptions: {
+        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowMethods: ['POST', 'OPTIONS'],
+        allowHeaders: ['Content-Type', 'x-api-key'],
+      },
     });
 
     // APIキー

@@ -278,6 +278,18 @@ curl -X POST "https://{API ID}.execute-api.$(jq -r '.context.sesConfig.region' c
 }
 ```
 
+### テストツール
+
+ブラウザでメール送信をテストできる HTML ツールを用意しています。
+
+```bash
+open tools/send-test.html
+```
+
+API Endpoint URL と API Key を入力し、フォームから自由形式メール・テンプレートメールの送信をテストできます。設定値はブラウザの localStorage に保存されるため、次回アクセス時に再入力は不要です。
+
+> **注意**: テンプレートメール送信をテストする場合は、事前に SES テンプレートの登録が必要です。次の「SES テンプレート管理」セクションを参照してください。
+
 ## SES テンプレート管理
 
 SES テンプレートは AWS CLI で管理します。サンプルテンプレートが `templates/sample-template.json` にあります。
@@ -347,6 +359,7 @@ aws ses list-templates \
 ```
 
 2. テンプレート名が正しいか確認（大文字・小文字を区別します）
+3. AWS CLI コマンドで `--profile` の付け忘れがないか確認（プロファイル未指定だと別のアカウント/リージョンに登録されてしまい、対象環境にテンプレートが存在しない状態になります）
 
 ### API キーが無効（403 Forbidden）
 
