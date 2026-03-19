@@ -1,2 +1,11 @@
-# 送信先メールアドレスの検証（Sandbox モードの場合、実際の送信先アドレスに置き換えてください）
-aws ses verify-email-identity --email-address k-nagayama@jreast.co.jp --region $(jq -r '.context.sesConfig.region' cdk.json)
+aws ses verify-email-identity --email-address k-nagayama@jreast.co.jp --region ap-northeast-1 --profile esio
+
+
+aws apigateway get-api-key --api-key y5xec8k4bb --include-value --region ap-northeast-1 --profile esio
+
+https://gywr4vcvy0.execute-api.ap-northeast-1.amazonaws.com/v1/
+4hwHkHPYMvapPDjbopq2a9y5Zb98QTY9ao1LghWU
+
+aws ses create-template --cli-input-json file://templates/camera-notification-template.json --region ap-northeast-1 --profile esio
+
+aws ses list-templates --region ap-northeast-1 --profile esio
