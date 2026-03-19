@@ -460,3 +460,7 @@ aws ses delete-template \
 | **合計** | | **約 $0.01/月** |
 
 > **補足**: Lambda・API Gateway は AWS 無料枠の範囲内で収まるため、実質的なコストは SES の送信料金のみです。送信量が大幅に増加しない限り、月額 $1 未満で運用できます。
+
+## ライセンス
+
+[MIT License](./LICENSE) © 2026 Kentaro Nagayama
