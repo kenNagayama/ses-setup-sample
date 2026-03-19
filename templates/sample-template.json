@@ -1,8 +1,0 @@
-{
-  "Template": {
-    "TemplateName": "NotificationTemplate",
-    "SubjectPart": "【通知】{{title}}",
-    "TextPart": "{{name}} 様\n\n{{message}}\n\n---\nこのメールはシステムから自動送信されています。",
-    "HtmlPart": "<html><body><p>{{name}} 様</p><p>{{message}}</p><hr><p style=\"color: gray; font-size: 12px;\">このメールはシステムから自動送信されています。</p></body></html>"
-  }
-}

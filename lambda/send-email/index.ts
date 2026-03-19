@@ -1,8 +1,14 @@
-import { SESClient, SendEmailCommand, SendTemplatedEmailCommand } from '@aws-sdk/client-ses';
+import { SESClient, SendEmailCommand, SendRawEmailCommand, GetTemplateCommand } from '@aws-sdk/client-ses';
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 
 const ses = new SESClient({ region: process.env.AWS_SES_REGION });
 const SENDER_EMAIL = process.env.SENDER_EMAIL!;
+
+interface Attachment {
+  filename: string;
+  contentType: string;
+  data: string; // base64
+}
 
 interface SendEmailBody {
   to: string[];
@@ -12,6 +18,7 @@ interface SendEmailBody {
   cc?: string[];
   bcc?: string[];
   replyTo?: string[];
+  attachments?: Attachment[];
 }
 
 interface SendTemplatedEmailBody {
@@ -51,6 +58,10 @@ function validateOptionalEmails(emails: unknown, fieldName: string): string[] | 
   return validateEmails(emails, fieldName);
 }
 
+function encodeSubject(subject: string): string {
+  return `=?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`;
+}
+
 async function handleSendEmail(body: SendEmailBody): Promise<APIGatewayProxyResult> {
   const to = validateEmails(body.to, 'to');
   if (!body.subject || typeof body.subject !== 'string') {
@@ -63,6 +74,64 @@ async function handleSendEmail(body: SendEmailBody): Promise<APIGatewayProxyResu
   const cc = validateOptionalEmails(body.cc, 'cc');
   const bcc = validateOptionalEmails(body.bcc, 'bcc');
   const replyTo = validateOptionalEmails(body.replyTo, 'replyTo');
+
+  if (body.attachments && body.attachments.length > 0) {
+    const MIXED_BOUNDARY = 'MIXED_BOUNDARY_' + Date.now();
+    const ALT_BOUNDARY = 'ALT_BOUNDARY_' + Date.now();
+
+    const lines: string[] = [
+      'MIME-Version: 1.0',
+      `From: ${SENDER_EMAIL}`,
+      `To: ${to.join(', ')}`,
+      ...(cc ? [`Cc: ${cc.join(', ')}`] : []),
+      ...(bcc ? [`Bcc: ${bcc.join(', ')}`] : []),
+      ...(replyTo ? [`Reply-To: ${replyTo.join(', ')}`] : []),
+      `Subject: ${encodeSubject(body.subject)}`,
+      `Content-Type: multipart/mixed; boundary="${MIXED_BOUNDARY}"`,
+      '',
+      `--${MIXED_BOUNDARY}`,
+      `Content-Type: multipart/alternative; boundary="${ALT_BOUNDARY}"`,
+      '',
+      `--${ALT_BOUNDARY}`,
+      'Content-Type: text/plain; charset=UTF-8',
+      '',
+      body.body,
+      '',
+    ];
+
+    if (body.bodyHtml) {
+      lines.push(
+        `--${ALT_BOUNDARY}`,
+        'Content-Type: text/html; charset=UTF-8',
+        '',
+        body.bodyHtml,
+        '',
+      );
+    }
+
+    lines.push(`--${ALT_BOUNDARY}--`);
+
+    for (const attachment of body.attachments) {
+      lines.push(
+        '',
+        `--${MIXED_BOUNDARY}`,
+        `Content-Type: ${attachment.contentType}; name="${attachment.filename}"`,
+        'Content-Transfer-Encoding: base64',
+        `Content-Disposition: attachment; filename="${attachment.filename}"`,
+        '',
+        attachment.data,
+        '',
+      );
+    }
+
+    lines.push(`--${MIXED_BOUNDARY}--`);
+
+    const rawMessage = lines.join('\r\n');
+    const result = await ses.send(new SendRawEmailCommand({
+      RawMessage: { Data: Buffer.from(rawMessage) },
+    }));
+    return response(200, { messageId: result.MessageId });
+  }
 
   const result = await ses.send(new SendEmailCommand({
     Source: SENDER_EMAIL,
@@ -97,16 +166,106 @@ async function handleSendTemplatedEmail(body: SendTemplatedEmailBody): Promise<A
   const bcc = validateOptionalEmails(body.bcc, 'bcc');
   const replyTo = validateOptionalEmails(body.replyTo, 'replyTo');
 
-  const result = await ses.send(new SendTemplatedEmailCommand({
-    Source: SENDER_EMAIL,
-    Destination: {
-      ToAddresses: to,
-      ...(cc && { CcAddresses: cc }),
-      ...(bcc && { BccAddresses: bcc }),
-    },
-    Template: body.templateName,
-    TemplateData: JSON.stringify(body.templateData),
-    ...(replyTo && { ReplyToAddresses: replyTo }),
+  // SES の SendTemplatedEmail は TemplateData が 30KB 上限のため、
+  // Lambda 側でテンプレートを取得して変数展開し、SendRawEmail で送信する
+  const templateResult = await ses.send(new GetTemplateCommand({ TemplateName: body.templateName }));
+  const template = templateResult.Template;
+  if (!template) {
+    return response(400, { error: `テンプレートが見つかりません: ${body.templateName}` });
+  }
+
+  // encoded-image はテンプレートレンダリングには使わず CID インライン画像として添付する
+  const encodedImage = body.templateData['encoded-image'] ?? '';
+  const dataForRender = { ...body.templateData };
+  delete dataForRender['encoded-image'];
+
+  const render = (text: string): string =>
+    text.replace(/\{\{([^}]+)\}\}/g, (_, key) => dataForRender[key.trim()] ?? '');
+
+  const renderedSubject = render(template.SubjectPart ?? '');
+  const renderedText = render(template.TextPart ?? '');
+  const renderedHtml = template.HtmlPart ? render(template.HtmlPart) : undefined;
+
+  const ts = Date.now();
+
+  let lines: string[];
+
+  if (encodedImage && renderedHtml) {
+    // multipart/related 構造: CID インライン画像を添付
+    const RELATED_BOUNDARY = 'RELATED_BOUNDARY_' + ts;
+    const ALT_BOUNDARY = 'ALT_BOUNDARY_' + ts;
+
+    lines = [
+      'MIME-Version: 1.0',
+      `From: ${SENDER_EMAIL}`,
+      `To: ${to.join(', ')}`,
+      ...(cc ? [`Cc: ${cc.join(', ')}`] : []),
+      ...(bcc ? [`Bcc: ${bcc.join(', ')}`] : []),
+      ...(replyTo ? [`Reply-To: ${replyTo.join(', ')}`] : []),
+      `Subject: ${encodeSubject(renderedSubject)}`,
+      `Content-Type: multipart/related; boundary="${RELATED_BOUNDARY}"; type="multipart/alternative"`,
+      '',
+      `--${RELATED_BOUNDARY}`,
+      `Content-Type: multipart/alternative; boundary="${ALT_BOUNDARY}"`,
+      '',
+      `--${ALT_BOUNDARY}`,
+      'Content-Type: text/plain; charset=UTF-8',
+      '',
+      renderedText,
+      '',
+      `--${ALT_BOUNDARY}`,
+      'Content-Type: text/html; charset=UTF-8',
+      '',
+      renderedHtml,
+      '',
+      `--${ALT_BOUNDARY}--`,
+      '',
+      `--${RELATED_BOUNDARY}`,
+      'Content-Type: image/png',
+      'Content-Transfer-Encoding: base64',
+      'Content-ID: <camera-image>',
+      'Content-Disposition: inline; filename="camera-image.png"',
+      '',
+      encodedImage,
+      '',
+      `--${RELATED_BOUNDARY}--`,
+    ];
+  } else {
+    // 画像なし: multipart/alternative 構造
+    const BOUNDARY = 'ALT_BOUNDARY_' + ts;
+
+    lines = [
+      'MIME-Version: 1.0',
+      `From: ${SENDER_EMAIL}`,
+      `To: ${to.join(', ')}`,
+      ...(cc ? [`Cc: ${cc.join(', ')}`] : []),
+      ...(bcc ? [`Bcc: ${bcc.join(', ')}`] : []),
+      ...(replyTo ? [`Reply-To: ${replyTo.join(', ')}`] : []),
+      `Subject: ${encodeSubject(renderedSubject)}`,
+      `Content-Type: multipart/alternative; boundary="${BOUNDARY}"`,
+      '',
+      `--${BOUNDARY}`,
+      'Content-Type: text/plain; charset=UTF-8',
+      '',
+      renderedText,
+      '',
+    ];
+
+    if (renderedHtml) {
+      lines.push(
+        `--${BOUNDARY}`,
+        'Content-Type: text/html; charset=UTF-8',
+        '',
+        renderedHtml,
+        '',
+      );
+    }
+
+    lines.push(`--${BOUNDARY}--`);
+  }
+
+  const result = await ses.send(new SendRawEmailCommand({
+    RawMessage: { Data: Buffer.from(lines.join('\r\n')) },
   }));
 
   return response(200, { messageId: result.MessageId });

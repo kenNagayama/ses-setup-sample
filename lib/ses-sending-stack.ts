@@ -40,7 +40,7 @@ export class SesSendingStack extends cdk.Stack {
 
     // SES送信権限
     sendEmailFn.addToRolePolicy(new iam.PolicyStatement({
-      actions: ['ses:SendEmail', 'ses:SendTemplatedEmail'],
+      actions: ['ses:SendEmail', 'ses:SendRawEmail', 'ses:GetTemplate'],
       resources: ['*'],
     }));
 

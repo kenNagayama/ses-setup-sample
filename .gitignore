@@ -17,3 +17,6 @@ cdk.json
 
 # OS
 .DS_Store
+
+# ツール設定（APIキー等を含むため）
+tools/.env

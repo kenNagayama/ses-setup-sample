@@ -86,6 +86,8 @@ textarea { resize: vertical; min-height: 80px; }
     <textarea id="send-body">API Gateway経由でのメール送信テストです。</textarea>
     <label for="send-bodyhtml">Body HTML</label>
     <textarea id="send-bodyhtml"><h1>テスト通知</h1><p>API Gateway経由でのメール送信テストです。</p></textarea>
+    <label for="send-attachment">添付ファイル（画像）</label>
+    <input type="file" id="send-attachment" accept="image/*" style="margin-bottom:12px;">
     <button class="btn" id="btn-send" onclick="sendFreeform()">
       <span class="spinner" id="spinner-send"></span>送信
     </button>
@@ -103,13 +105,20 @@ textarea { resize: vertical; min-height: 80px; }
     <label for="tpl-replyto">Reply-To</label>
     <input type="text" id="tpl-replyto" placeholder="reply@example.com">
     <label class="required" for="tpl-name">Template Name</label>
-    <input type="text" id="tpl-name" value="NotificationTemplate">
+    <input type="text" id="tpl-name" value="CameraNotificationTemplate">
     <label class="required" for="tpl-data">Template Data（JSON）</label>
-    <textarea id="tpl-data" rows="6">{
-  "title": "システムアラート",
-  "name": "田中太郎",
-  "message": "サーバーのCPU使用率が90%を超えました。"
+    <textarea id="tpl-data" rows="11">{
+  "datetime": "2026-03-19 14:30:00",
+  "line-name": "山手線",
+  "station": "田町駅",
+  "line-direction": "内回り",
+  "kiro-tei": "12k345m",
+  "pole-num": "77号柱",
+  "encoded-image": "",
+  "panta-camera-system-link": "https://example.com/camera/1"
 }</textarea>
+    <label for="tpl-image">画像ファイル（encoded-image に自動反映）</label>
+    <input type="file" id="tpl-image" accept="image/*" style="margin-bottom:12px;" onchange="updateTemplateImage(this)">
     <button class="btn" id="btn-template" onclick="sendTemplate()">
       <span class="spinner" id="spinner-template"></span>送信
     </button>
@@ -193,7 +202,34 @@ async function postApi(path, body, tab) {
   }
 }
 
-function sendFreeform() {
+function updateTemplateImage(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const base64 = e.target.result.split(',')[1];
+    const dataEl = document.getElementById('tpl-data');
+    try {
+      const data = JSON.parse(dataEl.value);
+      data['encoded-image'] = base64;
+      dataEl.value = JSON.stringify(data, null, 2);
+    } catch {
+      showResult('result-template', false, 'Template Data の JSON が不正なため画像を反映できません。');
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function sendFreeform() {
   const to = parseAddresses(document.getElementById('send-to').value);
   const subject = document.getElementById('send-subject').value.trim();
   const body = document.getElementById('send-body').value.trim();
@@ -210,6 +246,12 @@ function sendFreeform() {
   if (bcc.length) payload.bcc = bcc;
   if (replyTo.length) payload.replyTo = replyTo;
   if (bodyHtml) payload.bodyHtml = bodyHtml;
+  const attachmentInput = document.getElementById('send-attachment');
+  if (attachmentInput.files.length > 0) {
+    const file = attachmentInput.files[0];
+    const data = await readFileAsBase64(file);
+    payload.attachments = [{ filename: file.name, contentType: file.type, data }];
+  }
   postApi('/send', payload, 'send');
 }
 
