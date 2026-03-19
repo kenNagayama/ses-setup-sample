@@ -20,10 +20,32 @@ flowchart LR
 
 ## 前提条件
 
-- AWS アカウント
-- AWS CLI（設定済み）
-- Node.js 18 以上
-- AWS CDK CLI (`npm install -g aws-cdk`)
+| ツール | バージョン | 用途 |
+|--------|-----------|------|
+| AWS アカウント | - | デプロイ先 |
+| [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) | 2.x 以上 | リソース操作・SES テンプレート管理 |
+| [Node.js](https://nodejs.org/) | 22 以上 | CDK / Lambda ランタイム |
+| [AWS CDK CLI](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html) | 2.x 以上 | インフラ構築 (`npm install -g aws-cdk`) |
+| [uv](https://docs.astral.sh/uv/) | 任意 | Python テストスクリプト実行用 |
+
+### AWS 認証について
+
+このプロジェクトでは以下の 2 つの認証方式に対応しています。
+
+**環境変数・デフォルト認証の場合:**
+
+```bash
+aws sts get-caller-identity
+```
+
+**AWS SSO プロファイルを使う場合:**
+
+```bash
+aws sso login --profile {プロファイル名}
+aws sts get-caller-identity --profile {プロファイル名}
+```
+
+> 以降のコマンド例では `--profile` なしで記載しています。AWS SSO 等のプロファイルを使う場合は、各 `aws` コマンド・`npx cdk` コマンドの末尾に `--profile {プロファイル名}` を必ず追加してください。
 
 
 ## パラメータ設定
@@ -71,28 +93,7 @@ cp cdk.json.sample cdk.json
 
 > **注意**: `cdk.json` は `.gitignore` に含まれているため、Git にコミットされません。実際の設定値が誤って公開されることを防いでいます。
 
-### 3. AWS 認証の確認
-
-AWS CLI の認証方法に応じて、以下のいずれかを確認してください。
-
-**環境変数・デフォルト認証の場合:**
-
-```bash
-aws sts get-caller-identity
-```
-
-**AWS プロファイルを使う場合:**
-
-```bash
-# SSO プロファイルの場合は事前にログイン
-aws sso login --profile {プロファイル名}
-
-aws sts get-caller-identity --profile {プロファイル名}
-```
-
-> 以降のコマンド例では `--profile` なしで記載しています。**AWS SSO 等のプロファイルを使う場合は、各 `aws` コマンド・`npx cdk` コマンドの末尾に `--profile {プロファイル名}` を必ず追加してください。**
-
-### 4. CDK Bootstrap（初回のみ）
+### 3. CDK Bootstrap（初回のみ）
 
 デプロイ先リージョンに CDK の初期リソースを作成します。`cdk.json` の `region` が使われるため、アカウントIDやリージョンの指定は不要です。
 
@@ -100,14 +101,14 @@ aws sts get-caller-identity --profile {プロファイル名}
 npx cdk bootstrap
 ```
 
-### 5. テンプレート生成・確認（任意）
+### 4. テンプレート生成・確認（任意）
 
 ```bash
 npm run build
 npx cdk synth
 ```
 
-### 6. デプロイ
+### 5. デプロイ
 
 ```bash
 npx cdk deploy --all --require-approval never
