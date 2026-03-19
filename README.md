@@ -252,13 +252,18 @@ curl -X POST "https://{API ID}.execute-api.ap-northeast-1.amazonaws.com/v1/send-
     "templateName": "CameraNotificationTemplate",
     "templateData": {
       "datetime": "2026-03-19 14:30:00",
-      "line": "山手線",
+      "line-name": "山手線",
       "station": "田町駅",
+      "line-direction": "内回り",
+      "kiro-tei": "12k345m",
+      "pole-num": "77号柱",
       "encoded-image": "",
       "panta-camera-system-link": "https://example.com/camera/1"
     }
   }'
 ```
+
+> **実装メモ**: SES の `SendTemplatedEmail` API は `TemplateData` が 30KB に制限されており、base64 画像を含む大きなデータを渡せません。そのため Lambda 内で `GetTemplate` によりテンプレートを取得して変数展開を行い、`SendRawEmail` で送信しています。`encoded-image` は SES テンプレートには直接展開されず、CID インライン画像（`cid:camera-image`）として MIME メッセージに添付されます。
 
 **リクエストボディ:**
 
@@ -276,9 +281,12 @@ curl -X POST "https://{API ID}.execute-api.ap-northeast-1.amazonaws.com/v1/send-
 | 変数 | 説明 |
 |-----|------|
 | `datetime` | 検知日時 |
-| `line` | 路線名 |
-| `station` | 駅名 |
-| `encoded-image` | base64エンコードされた画像データ（HTMLの `<img>` タグに埋め込まれる） |
+| `line-name` | 路線名 |
+| `station` | 駅名・区間 |
+| `line-direction` | 線別（内回り/外回りなど） |
+| `kiro-tei` | キロ程（例: 12k345m） |
+| `pole-num` | 電柱番号（例: 77号柱） |
+| `encoded-image` | base64エンコードされた画像データ（CIDインライン画像として添付） |
 | `panta-camera-system-link` | カメラシステムへのリンクURL |
 
 ### レスポンス
@@ -308,6 +316,9 @@ open tools/send-test.html
 ```
 
 API Endpoint URL と API Key を入力し、フォームから自由形式メール・テンプレートメールの送信をテストできます。設定値はブラウザの localStorage に保存されるため、次回アクセス時に再入力は不要です。
+
+- **自由形式メール**: 画像ファイルを選択すると添付ファイルとして送信できます。
+- **テンプレートメール**: 画像ファイルを選択すると `encoded-image` フィールドに base64 データが自動反映されます。
 
 > **注意**: テンプレートメール送信をテストする場合は、事前に SES テンプレートの登録が必要です。次の「SES テンプレート管理」セクションを参照してください。
 

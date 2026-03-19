@@ -107,10 +107,13 @@ textarea { resize: vertical; min-height: 80px; }
     <label class="required" for="tpl-name">Template Name</label>
     <input type="text" id="tpl-name" value="CameraNotificationTemplate">
     <label class="required" for="tpl-data">Template Data（JSON）</label>
-    <textarea id="tpl-data" rows="8">{
+    <textarea id="tpl-data" rows="11">{
   "datetime": "2026-03-19 14:30:00",
-  "line": "山手線",
+  "line-name": "山手線",
   "station": "田町駅",
+  "line-direction": "内回り",
+  "kiro-tei": "12k345m",
+  "pole-num": "77号柱",
   "encoded-image": "",
   "panta-camera-system-link": "https://example.com/camera/1"
 }</textarea>

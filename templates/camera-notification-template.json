@@ -1,8 +1,8 @@
 {
   "Template": {
     "TemplateName": "CameraNotificationTemplate",
-    "SubjectPart": "【異常通知】{{line}}{{station}}_{{datetime}}",
-    "TextPart": "{{datetime}}\n{{line}} {{station}} のパンタグラフ監視カメラで異常を検知しました。\n\nパンタグラフ監視カメラへのリンクはこちらです: {{panta-camera-system-link}}",
-    "HtmlPart": "<html><body><p>{{datetime}}</p><p>{{line}} {{station}} のパンタグラフ監視カメラで異常を検知しました。</p><p><img src=\"cid:camera-image\" alt=\"パンタグラフ監視カメラ画像\" style=\"max-width:100%;\"></p><p>パンタグラフ監視カメラへのリンクはこちらです: <a href=\"{{panta-camera-system-link}}\">{{panta-camera-system-link}}</a></p></body></html>"
+    "SubjectPart": "【異常通知】{{line-name}}{{station}}_{{datetime}}",
+    "TextPart": "{{datetime}}\n{{line-name}} {{station}} のパンタグラフ監視カメラで異常を検知しました。\n\n線区: {{line-name}}\n区間: {{station}}\n線別: {{line-direction}}\nキロ程: {{kiro-tei}}\n電柱番号: {{pole-num}}\n\nパンタグラフ監視カメラへのリンクはこちらです: {{panta-camera-system-link}}",
+    "HtmlPart": "<html><body><p>{{datetime}}</p><p>{{line-name}} {{station}} のパンタグラフ監視カメラで異常を検知しました。</p><table><tr><th>線区</th><td>{{line-name}}</td></tr><tr><th>区間</th><td>{{station}}</td></tr><tr><th>線別</th><td>{{line-direction}}</td></tr><tr><th>キロ程</th><td>{{kiro-tei}}</td></tr><tr><th>電柱番号</th><td>{{pole-num}}</td></tr></table><p><img src=\"cid:camera-image\" alt=\"パンタグラフ監視カメラ画像\" style=\"max-width:100%;\"></p><p>パンタグラフ監視カメラへのリンクはこちらです: <a href=\"{{panta-camera-system-link}}\">{{panta-camera-system-link}}</a></p></body></html>"
   }
 }
