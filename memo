@@ -1,0 +1,2 @@
+# 送信先メールアドレスの検証（Sandbox モードの場合、実際の送信先アドレスに置き換えてください）
+aws ses verify-email-identity --email-address k-nagayama@jreast.co.jp --region $(jq -r '.context.sesConfig.region' cdk.json)
