@@ -311,6 +311,29 @@ API Endpoint URL と API Key を入力し、フォームから自由形式メー
 
 > **注意**: テンプレートメール送信をテストする場合は、事前に SES テンプレートの登録が必要です。次の「SES テンプレート管理」セクションを参照してください。
 
+### Python スクリプトによるテスト送信
+
+`uv run` 一発でテンプレートメールを送信できる Python スクリプトも用意しています。`sample-image/image.png` を CID インライン画像として `CameraNotificationTemplate` で送信します。
+
+**uv のインストール（macOS / Linux）:**
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**実行手順:**
+
+```bash
+# 1. .env.sample をコピーして設定を編集
+cp tools/.env.sample tools/.env
+# tools/.env を開き、API_ENDPOINT・API_KEY・TO_EMAIL を設定
+
+# 2. スクリプトを実行（依存パッケージは uv が自動でインストール）
+uv run tools/send_test_template.py
+```
+
+`tools/.env` には API キーが含まれるため、`.gitignore` で Git 管理対象外になっています。
+
 ## SES テンプレート管理
 
 SES テンプレートは AWS CLI で管理します。テンプレートファイルが `templates/camera-notification-template.json` にあります。
