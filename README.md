@@ -231,6 +231,15 @@ curl -X POST "https://{API ID}.execute-api.ap-northeast-1.amazonaws.com/v1/send"
 | `cc` | string[] | No | CC |
 | `bcc` | string[] | No | BCC |
 | `replyTo` | string[] | No | Reply-To |
+| `attachments` | Attachment[] | No | 添付ファイル |
+
+**Attachment オブジェクト:**
+
+| フィールド | 型 | 説明 |
+|-----------|------|------|
+| `filename` | string | ファイル名 |
+| `contentType` | string | MIMEタイプ（例: `image/png`） |
+| `data` | string | base64エンコードされたファイルデータ |
 
 ### テンプレートメール送信 (`POST /send-template`)
 
@@ -240,11 +249,13 @@ curl -X POST "https://{API ID}.execute-api.ap-northeast-1.amazonaws.com/v1/send-
   -H "x-api-key: {APIキーのvalue}" \
   -d '{
     "to": ["{送信先メールアドレス}"],
-    "templateName": "NotificationTemplate",
+    "templateName": "CameraNotificationTemplate",
     "templateData": {
-      "title": "システムアラート",
-      "name": "田中太郎",
-      "message": "サーバーの CPU 使用率が 90% を超えました。"
+      "datetime": "2026-03-19 14:30:00",
+      "line": "山手線",
+      "station": "田町駅",
+      "encoded-image": "",
+      "panta-camera-system-link": "https://example.com/camera/1"
     }
   }'
 ```
@@ -259,6 +270,16 @@ curl -X POST "https://{API ID}.execute-api.ap-northeast-1.amazonaws.com/v1/send-
 | `cc` | string[] | No | CC |
 | `bcc` | string[] | No | BCC |
 | `replyTo` | string[] | No | Reply-To |
+
+**`CameraNotificationTemplate` のテンプレート変数:**
+
+| 変数 | 説明 |
+|-----|------|
+| `datetime` | 検知日時 |
+| `line` | 路線名 |
+| `station` | 駅名 |
+| `encoded-image` | base64エンコードされた画像データ（HTMLの `<img>` タグに埋め込まれる） |
+| `panta-camera-system-link` | カメラシステムへのリンクURL |
 
 ### レスポンス
 
@@ -292,13 +313,13 @@ API Endpoint URL と API Key を入力し、フォームから自由形式メー
 
 ## SES テンプレート管理
 
-SES テンプレートは AWS CLI で管理します。サンプルテンプレートが `templates/sample-template.json` にあります。
+SES テンプレートは AWS CLI で管理します。テンプレートファイルが `templates/camera-notification-template.json` にあります。
 
 ### テンプレートの登録
 
 ```bash
 aws ses create-template \
-  --cli-input-json file://templates/sample-template.json \
+  --cli-input-json file://templates/camera-notification-template.json \
   --region ap-northeast-1
 ```
 
@@ -306,7 +327,7 @@ aws ses create-template \
 
 ```bash
 aws ses update-template \
-  --cli-input-json file://templates/sample-template.json \
+  --cli-input-json file://templates/camera-notification-template.json \
   --region ap-northeast-1
 ```
 
@@ -321,7 +342,7 @@ aws ses list-templates \
 
 ```bash
 aws ses delete-template \
-  --template-name NotificationTemplate \
+  --template-name CameraNotificationTemplate \
   --region ap-northeast-1
 ```
 
@@ -387,7 +408,7 @@ aws ses delete-identity \
 
 # テンプレートの削除（登録した場合）
 aws ses delete-template \
-  --template-name NotificationTemplate \
+  --template-name CameraNotificationTemplate \
   --region ap-northeast-1
 ```
 
