@@ -29,8 +29,11 @@ payload = {
     "templateName": "CameraNotificationTemplate",
     "templateData": {
         "datetime": "2026-03-19 14:30:00",
-        "line": "山手線",
+        "line-name": "山手線",
         "station": "田町駅",
+        "line-direction": "内回り",
+        "kiro-tei": "12k345m",
+        "pole-num": "77号柱",
         "encoded-image": encoded_image,
         "panta-camera-system-link": "https://example.com/camera/1",
     },
